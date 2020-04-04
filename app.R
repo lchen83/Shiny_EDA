@@ -36,13 +36,17 @@ ui <- navbarPage(theme = shinytheme("cerulean"),
 
                               ),
                               conditionalPanel(condition = "input.tabselected==2",
+                                               checkboxInput(inputId = "miss_sort",
+                                                             label = "Sort by descending order",
+                                                             value = TRUE)),
+                              conditionalPanel(condition = "input.tabselected==3",
                                                htmlOutput(outputId = "dim"),
                                                br(),
                                                numericInput(inputId = "na_col",
                                                             label = "Remove columns with more than __% missing",
                                                             min = 0,
                                                             max = 100,
-                                                            value = 50),
+                                                            value = 40),
                                                numericInput(inputId = "na_row",
                                                             label = "Remove rows with more than __% missing",
                                                             min = 0,
@@ -54,7 +58,7 @@ ui <- navbarPage(theme = shinytheme("cerulean"),
                                                htmlOutput(outputId = "dim_remove"),
                                                br(),
                                                htmlOutput(outputId = "dim_after_remove")),
-                              conditionalPanel(condition = "input.tabselected==3",
+                              conditionalPanel(condition = "input.tabselected==4",
                                                radioButtons(inputId = "impute",
                                                             label = "Impute missing value with:",
                                                             choices = c("mean", "median", "mode", "Do not apply"),
@@ -65,21 +69,21 @@ ui <- navbarPage(theme = shinytheme("cerulean"),
                                                  actionButton(inputId = "reset",
                                                               label = "Reset")
                                                  )),
-                              conditionalPanel(condition = "input.tabselected==4",
+                              conditionalPanel(condition = "input.tabselected==5",
                                                numericInput(inputId = "from",
                                                             label = "Show data summary from column",
                                                             value = 1),
                                                numericInput(inputId = "to",
                                                             label = "to column",
                                                             value = 50)),
-                              conditionalPanel(condition = "input.tabselected==5",
+                              conditionalPanel(condition = "input.tabselected==6",
                                                numericInput(inputId = "start",
                                                             label = "Show data structure from column",
                                                             value = 1),
                                                numericInput(inputId = "end",
                                                             label = "to column",
                                                             value = 50)),
-                              conditionalPanel(condition = "input.tabselected==6",
+                              conditionalPanel(condition = "input.tabselected==7",
                                                selectizeInput(inputId = "x",
                                                               label = "Select the variable:",
                                                               choices = c(""),
@@ -93,16 +97,18 @@ ui <- navbarPage(theme = shinytheme("cerulean"),
                               tabsetPanel(id = "tabselected",
                                 tabPanel("Data Source", value = 1,
                                          dataTableOutput(outputId = "df")),
-                                tabPanel("Data Preprocess", value = 2,
+                                tabPanel("Missing Value", value = 2,
+                                         verbatimTextOutput(outputId = "miss")),
+                                tabPanel("Data Preprocess", value = 3,
                                          dataTableOutput(outputId = "table1")),
-                                tabPanel("Imputation", value = 3,
+                                tabPanel("Imputation", value = 4,
                                          htmlOutput(outputId = "DT_text"),
                                          dataTableOutput(outputId = "table")),
-                                tabPanel("Summary", value = 4,
+                                tabPanel("Summary", value = 5,
                                          verbatimTextOutput(outputId = "summary")),
-                                tabPanel("Structure", value = 5,
+                                tabPanel("Structure", value = 6,
                                          verbatimTextOutput(outputId = "structure")),
-                                tabPanel("Plot", value = 6,
+                                tabPanel("Plot", value = 7,
                                          htmlOutput(outputId = "barplot_text"),
                                          plotOutput(outputId = "bar"))
                               )
@@ -302,9 +308,6 @@ server <- function(input, output, session){
     }
   )
 
-
-
-
   #--------------------------------remove columns & rows with high % of NAs-----------------
 
   # Defining & initializing the reactiveValues object
@@ -422,6 +425,22 @@ server <- function(input, output, session){
       datatable(data_impute(), options = list(searching = FALSE))
     } else {
       return()
+    }
+  })
+
+  #-----------------------------------------Missing Variables-------------------------------
+
+  output$miss <- renderPrint({
+    if (is.null(data())) {
+      return()
+    } else if (counter_re$countervalue_re == 0 && counter$countervalue == 0) {
+      sort(colMeans(is.na(data())), decreasing = input$miss_sort)
+
+    } else if (counter_re$countervalue_re != 0 && counter$countervalue == 0) {
+      sort(colMeans(is.na(data_re_row())), decreasing = input$miss_sort)
+
+    } else if (counter_re$countervalue_re != 0 && counter$countervalue != 0) {
+      sort(colMeans(is.na(data_impute())), decreasing = input$miss_sort)
     }
   })
 
