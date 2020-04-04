@@ -5,7 +5,6 @@ library(tidyverse)  #data manipulation
 library(imputeTS) # data imputation
 library(ggplot2)
 library(scales)
-library(factoextra) # clustering algorithms & visualization
 library(ggdendro)
 library(plotly)
 library(psych)
@@ -98,6 +97,7 @@ ui <- navbarPage(theme = shinytheme("cerulean"),
                                 tabPanel("Data Source", value = 1,
                                          dataTableOutput(outputId = "df")),
                                 tabPanel("Missing Value", value = 2,
+                                         h5("% Missing"),
                                          verbatimTextOutput(outputId = "miss")),
                                 tabPanel("Data Preprocess", value = 3,
                                          dataTableOutput(outputId = "table1")),
@@ -428,19 +428,20 @@ server <- function(input, output, session){
     }
   })
 
-  #-----------------------------------------Missing Variables-------------------------------
+  #-----------------------------------------Missing Value---------------------------
 
   output$miss <- renderPrint({
+
     if (is.null(data())) {
       return()
     } else if (counter_re$countervalue_re == 0 && counter$countervalue == 0) {
-      sort(colMeans(is.na(data())), decreasing = input$miss_sort)
+      sort(colMeans(is.na(data())) * 100, decreasing = input$miss_sort)
 
     } else if (counter_re$countervalue_re != 0 && counter$countervalue == 0) {
-      sort(colMeans(is.na(data_re_row())), decreasing = input$miss_sort)
+      sort(colMeans(is.na(data_re_row())) * 100, decreasing = input$miss_sort)
 
     } else if (counter_re$countervalue_re != 0 && counter$countervalue != 0) {
-      sort(colMeans(is.na(data_impute())), decreasing = input$miss_sort)
+      sort(colMeans(is.na(data_impute())) * 100, decreasing = input$miss_sort)
     }
   })
 
