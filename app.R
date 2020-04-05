@@ -374,7 +374,6 @@ server <- function(input, output, session){
 
   # Make the data reactive & Imputation
   data_impute <- eventReactive(input$action, {
-
     if (input$impute == "Do not apply") {
       data_re_row()
     } else {
@@ -395,7 +394,7 @@ server <- function(input, output, session){
   #----------------------------------------Data---------------------------------------
 
   # The dimension of the data
-  output$dim <- renderText({paste("<b>This data has:</b>", "<br>", dim(data)[1],
+  output$dim <- renderText({paste("<b>This data has:</b>", "<br>", dim(data())[1],
                                   "rows", "<br>", dim(data())[2], "columns")})
 
   # Defining & initializing the reactiveValues object
@@ -722,7 +721,13 @@ server <- function(input, output, session){
 
   #remove columns that are highly correlated
 
-  corr <- reactive({cor(data_impute()[,1:length(data_impute()) - 1])})
+  corr <- reactive({
+    try(if (is.na(data_impute()) == TRUE) {stop()
+    } else {
+      cor(data_impute()[,1:length(data_impute()) - 1])
+      }
+        )
+    })
 
   highCorr <- reactive({findCorrelation(corr(), cutoff = 0.99, names = T)})
 
