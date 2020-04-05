@@ -67,7 +67,8 @@ ui <- navbarPage(theme = shinytheme("cerulean"),
                                                               label = "Impute"),
                                                  actionButton(inputId = "reset",
                                                               label = "Reset")
-                                                 )),
+                                                 ),
+                                               h6("Note: if the dataset does not have missing values, select 'Do not apply' ")),
                               conditionalPanel(condition = "input.tabselected==5",
                                                numericInput(inputId = "from",
                                                             label = "Show data summary from column",
@@ -135,6 +136,7 @@ ui <- navbarPage(theme = shinytheme("cerulean"),
                                        ),
                                        mainPanel(
                                          htmlOutput(outputId = "pca_text"),
+                                         htmlOutput(outputId = "pca_text_miss"),
                                          fluidRow(
                                            column(width = 6, verbatimTextOutput("pca_cm_x")),
                                            column(width = 6, verbatimTextOutput("pca_cm_y"))
@@ -181,6 +183,7 @@ ui <- navbarPage(theme = shinytheme("cerulean"),
                                        ),
                                        mainPanel(
                                          htmlOutput(outputId = "rc_text"),
+                                         htmlOutput(outputId = "rc_text_miss"),
                                          plotlyOutput("rc_plot"))
                                      )),
                             tabPanel("3D plot",
@@ -220,6 +223,7 @@ ui <- navbarPage(theme = shinytheme("cerulean"),
                             ),
                             mainPanel(
                               htmlOutput(outputId = "km_snp_text"),
+                              htmlOutput(outputId = "km_text_miss"),
                               verbatimTextOutput(outputId = "km_table"),
                               plotlyOutput(outputId = "km_snp_plot")
                             )
@@ -254,6 +258,7 @@ ui <- navbarPage(theme = shinytheme("cerulean"),
                             ),
                             mainPanel(
                               htmlOutput(outputId = "hc_text"),
+                              htmlOutput(outputId = "hc_text_miss"),
                               verbatimTextOutput(outputId = "hc_table"),
                               plotOutput(outputId = "dend",
                                          width = "125%",
@@ -424,6 +429,32 @@ server <- function(input, output, session){
       datatable(data_impute(), options = list(searching = FALSE))
     } else {
       return()
+    }
+  })
+
+  #Warnings: if the data did not impute appropriately
+
+  output$pca_text_miss <- renderText({
+    if (counter_re$countervalue_re != 0 && counter$countervalue != 0 && sum(is.na(data_impute())) != 0) {
+      paste(h4("The dataset contains missing values, please impute the data"))
+    }
+  })
+
+  output$rc_text_miss <- renderText({
+    if (counter_re$countervalue_re != 0 && counter$countervalue != 0 && sum(is.na(data_impute())) != 0) {
+      paste(h4("The dataset contains missing values, please impute the data"))
+    }
+  })
+
+  output$km_text_miss <- renderText({
+    if (counter_re$countervalue_re != 0 && counter$countervalue != 0 && sum(is.na(data_impute())) != 0) {
+      paste(h4("The dataset contains missing values, please impute the data"))
+    }
+  })
+
+  output$hc_text_miss <- renderText({
+    if (counter_re$countervalue_re != 0 && counter$countervalue != 0 && sum(is.na(data_impute())) != 0) {
+      paste(h4("The dataset contains missing values, please impute the data"))
     }
   })
 
@@ -721,23 +752,31 @@ server <- function(input, output, session){
 
   #remove columns that are highly correlated
 
-  corr <- reactive({
-    try(if (is.na(data_impute()) == TRUE) {stop()
-    } else {
-      cor(data_impute()[,1:length(data_impute()) - 1])
-      }
-        )
-    })
+  clean_data <- eventReactive(input$act_rc, {
+    corr <- cor(data_impute()[,1:length(data_impute()) - 1])
+    highCorr <- findCorrelation(corr, cutoff = 0.99, names = T)
+    data_impute()[, !names(data_impute()) %in% highCorr]
+  })
 
-  highCorr <- reactive({findCorrelation(corr(), cutoff = 0.99, names = T)})
+  # corr <- reactive({
+  #     cor(data_impute()[,1:length(data_impute()) - 1])
+  #
+  #   })
+  #
+  # highCorr <- reactive({findCorrelation(corr(), cutoff = 0.99, names = T)})
+  #
+  # clean_data <- reactive({data_impute()[, !names(data_impute()) %in% highCorr()]})
 
-  clean_data <- reactive({data_impute()[, !names(data_impute()) %in% highCorr()]})
+  pca_varimax_score <- eventReactive(input$act_rc, {
+    pca_varimax <- principal(clean_data()[, 1:length(clean_data()) - 1],
+              nfactors = input$rc_num, rotate = "varimax")
+    as.data.frame(pca_varimax$score)
+  })
 
-
-  pca_varimax <- reactive({principal(clean_data()[, 1:length(clean_data()) - 1],
-                                     nfactors = input$rc_num, rotate = "varimax")})
-
-  pca_varimax_score <- reactive({as.data.frame(pca_varimax()$score)})
+  # pca_varimax <- reactive({principal(clean_data()[, 1:length(clean_data()) - 1],
+  #                                    nfactors = input$rc_num, rotate = "varimax")})
+  #
+  # pca_varimax_score <- reactive({as.data.frame(pca_varimax()$score)})
 
 
   #------------------------------------------------RC plot-------------------------------------------------
@@ -773,7 +812,7 @@ server <- function(input, output, session){
 
   rc_plot <- eventReactive(input$act_rc, {
     if (input$rc_col == FALSE ) {
-      ggplot(pca_varimax_score(), aes_string(x = input$rc_x, y = input$rc_y))+
+      ggplot(pca_varimax_score(), aes_string(x = input$rc_x, y = input$rc_y)) +
         geom_point(size = 2, alpha = 0.5)
 
     } else  {
